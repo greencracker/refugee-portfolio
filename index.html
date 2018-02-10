@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head><link rel="stylesheet" type="text/css" href="src/style/style.css" />
+</head>
+<body>
+
+<div id="explainer">
+  <p><b>Main metro Atlanta destinations for international refugees</b>
+    <p>April 1, 2006 through April 1, 2016
+      <p>Source: <a href="http://www.wrapsnet.org/Reports/InteractiveReporting/tabid/393/Default.aspx" target="_blank">U.S. Department of State, Refugee Processing Center</a>
+        <p>Data downloaded April 11, 2016
+        <p>A total 25,730 international refugees moved to Georgia in the last ten years.
+        <p>This graph shows countries that have sent more than 100 people to metro Atlanta, and the metro cities that have recieved more than 100 people.
+        <p>Click or hover over the graph to see more.</p>
+
+</div>
+
+<div id="chart">
+
+<script src="js/d3.v3.min.js"></script>
+<script src="js/sankey.js"></script>
+
+<script>
+	
+var units = "People";
+
+function width_getter (some_num) {
+  if (some_num > 800 ) {return 800;}
+    else {return some_num;}
+  }
+
+width = width_getter(window.innerWidth)-22;
+
+draw(width);
+
+function draw( actual_width ) {
+
+var margin = {top: 0, right: 5, bottom: 10, left: 2},
+    width = actual_width - margin.left - margin.right,
+    height = 600 - margin.top - margin.bottom;
+
+var formatNumber = d3.format(",.0f"),    // zero decimal places
+    format = function(d) { 
+      if (d > 1) { return formatNumber(d) + " people";}
+      else {return formatNumber(d) + " person";}
+   };
+    
+// append the svg canvas to the page
+var svg = d3.select("#chart").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", 
+          "translate(" + margin.left + "," + margin.top + ")");
+
+// Set the sankey diagram properties
+var sankey = d3.sankey()
+    .nodeWidth(15)
+    .nodePadding(10)
+    .size([width, height]);
+
+var path = sankey.link();
+
+var div = d3.select("body")
+  .append("div")  // declare the tooltip div 
+  .attr("class", "tooltip")
+  .style("opacity", 0);
+
+var sankey = d3.sankey()
+    .nodeWidth(15)
+    .nodePadding(10)
+    .size([actual_width, height]);  
+
+
+// load the data (using the timelyportfolio csv method)
+d3.csv("src/data/all_one_hundred_and_up.csv", function(error, data) {
+
+
+  data = data.sort(function(a,b) {return b.value + a.value; })
+
+  // set up graph in same style as original example but empty
+  graph = {"nodes" : [], "links" : []};
+
+    data.forEach(function (d) {
+      graph.nodes.push({ "name": d.source });
+      graph.nodes.push({ "name": d.target });
+      graph.links.push({ "source": d.source,
+                         "target": d.target,
+                         "value": +d.value });
+     });
+
+     // return only the distinct / unique nodes
+     graph.nodes = d3.keys(d3.nest()
+       .key(function (d) { return d.name; })
+       .map(graph.nodes));
+
+
+     // loop through each link replacing the text with its index from node
+     graph.links.forEach(function (d, i) {
+       graph.links[i].source = graph.nodes.indexOf(graph.links[i].source);
+       graph.links[i].target = graph.nodes.indexOf(graph.links[i].target);
+     });
+
+     //now loop through each nodes to make nodes an array of objects
+     // rather than an array of strings
+     graph.nodes.forEach(function (d, i) {
+       graph.nodes[i] = { "name": d };
+     });
+
+  sankey
+    .nodes(graph.nodes)
+    .links(graph.links)
+    .layout(32);
+
+function nospace (in_string) {
+  return in_string.replace(/\s+/g, "");
+}
+
+// add in the nodes
+  var node = svg.append("g").selectAll(".node")
+      .data(graph.nodes)
+    .enter().append("g")
+      .attr("class", function (d) {return "node " + nospace(d.name);})
+      .attr("transform", function(d) { 
+		  return "translate(" + d.x + "," + d.y + ")"; })
+
+// add the rectangles for the nodes
+  node.append("rect")
+      .attr("height", function(d) { return d.dy; })
+      .attr("width", sankey.nodeWidth())
+      .style("fill", function (d) {
+        if(d.x < width/2) {return "darkkhaki";}
+        else {return "darkseagreen";}
+      })
+      .attr("class", function (d) {
+        if(d.x < width/2) {return "origin";}
+        else {return "destination";}
+      })
+
+      .style("stroke", "white")
+      .style("stroke-width", "5px")
+      .style("stroke-opacity", 0) // add a big invisible border to each box so the small ones are clickable
+    .on("mouseover", function (d) {
+      div.transition()
+        .duration(10)  
+        .style("opacity", 0);
+      div.transition()
+        .duration(10)  
+        .style("opacity", .9)
+        .style("background","lightgray")
+
+
+      if (d.x <10) {
+
+      div .html(d.name + " → everywhere <br>" + format(d.value))   
+        .style("left", width/2.5 + "px")      
+        .style("top", (d3.event.pageY + 1) + "px")
+
+      } else {
+              div .html("  Everywhere → <br>" + d.name + "<br>" + format(d.value))   
+        .style("left", width/2.5 + "px")      
+        .style("top", (d3.event.pageY + 1) + "px")
+      }
+
+
+      d3.selectAll(".link").filter("." + nospace(d.name)).transition().duration(10).style("stroke", "darkred").style("opacity", 0.6);
+      }) //turn selected ones red.
+      .on("mouseout", function (d) {
+         d3.selectAll(".link").transition().duration(10).style("stroke", "#000").style("opacity", 0.15)
+         div.transition().style("opacity", 0);
+         // reset paths to default
+      });
+
+// add in the title for the nodes
+  node.append("text")
+      .attr("x", -4)
+      .attr("y", function(d) { return d.dy / 2; })
+      .attr("dy", ".35em")
+      .attr("text-anchor", "end")
+      .attr("class", function (d) {return d.name;})
+      .text(function(d) { return d.name; })
+    .filter(function(d) { return d.x < width / 2; })
+      .attr("x", 4 + sankey.nodeWidth())
+      .attr("text-anchor", "start");
+
+// add in the links
+  var link = svg.append("g").selectAll(".link")
+      .data(graph.links)
+    .enter().append("path")
+      .attr("class", function (d) {return "link " + nospace(d.source.name) + " " + nospace(d.target.name);})
+      .attr("d", path)
+      .style("stroke-width", function(d) {return Math.max(1, d.dy); })
+      .style("opacity", 0.15)
+      
+      .on("mouseover", function (d) {
+        d3.select(this).transition().duration(10).style("stroke", "darkred").style("opacity", 0.6)   
+        div.transition()
+          .duration(10)  
+          .style("opacity", 0);
+        div.transition()
+          .duration(10)  
+          .style("opacity", .9)
+          .style("background","lightgray")
+        div .html(
+          d.source.name + " → " + d.target.name + "<br>" + format(d.value))   
+          .style("left", width/2.5 + "px")      
+          .style("top", (d3.event.pageY + 16) + "px");
+      })
+      .on("mouseout", function (d){
+         d3.selectAll(".link").transition().duration(10).style("stroke", "#000").style("opacity", 0.15)
+         div.transition().style("opacity", 0);
+      });
+
+ });
+};
+
+
+
+</script>
+
+</body>
+</html>

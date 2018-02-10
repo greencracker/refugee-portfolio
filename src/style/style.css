@@ -1,0 +1,24 @@
+html, body {
+  font: 12px sans-serif;
+}
+
+.node rect {
+  fill-opacity: .9;
+  shape-rendering: crispEdges;
+}
+
+.link {
+  fill: none;
+  stroke: #000;
+}
+
+div.tooltip {
+  position: absolute; 
+  text-align: center; 
+  width: 100px;  
+  height: 56px;   
+  padding: 2px; 
+  font: 12px sans-serif;  
+  border: 0px;          
+  border-radius: 8px;
+}
